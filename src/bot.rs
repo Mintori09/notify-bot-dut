@@ -1,8 +1,5 @@
 use crate::entity::NoticeSent;
-use crate::fetch::http_client;
-use crate::{cli::CLI, database, fetch, scheduler};
 use anyhow::Result;
-use std::sync::Arc;
 use teloxide::prelude::*;
 use teloxide::types::ParseMode;
 use teloxide::{Bot, types::ChatId};
