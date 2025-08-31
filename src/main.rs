@@ -1,10 +1,6 @@
 use anyhow::{Result, anyhow};
 
-mod bot;
-mod cli;
-mod database;
-mod fetch;
-mod scheduler;
+use notify_bot_dut::bot;
 
 #[tokio::main]
 async fn main() -> Result<()> {
