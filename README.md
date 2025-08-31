@@ -1,4 +1,4 @@
-# 📢 Notify Bot DUT
+# Notify Bot DUT
 
 A **Telegram bot** that fetches student/class/fee notices from **Đại học Bách Khoa - ĐHĐN (DUT)** website and automatically sends them to Telegram.
 
@@ -7,10 +7,10 @@ A **Telegram bot** that fetches student/class/fee notices from **Đại học B�
 ## Features
 
 - Fetches notices from DUT student portal:
-  - 📚 **Training (Đào tạo)**
-  - 🏫 **Class notices (Lớp học phần)**
-  - 👥 **Student Affairs (Công tác SV)**
-  - 💰 **Tuition & fees (Học phí, lệ phí)**
+  - **Training (Đào tạo)**
+  - **Class notices (Lớp học phần)**
+  - **Student Affairs (Công tác SV)**
+  - **Tuition & fees (Học phí, lệ phí)**
 
 - Filters notices (e.g., by class code `23.Nh99`).
 - Stores sent notices in SQLite to avoid duplicates.
