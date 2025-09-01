@@ -1,107 +1,108 @@
-# Notify Bot DUT
+# Notice Bot
 
-A **Telegram bot** that fetches student/class/fee notices from **Đại học Bách Khoa - ĐHĐN (DUT)** website and automatically sends them to Telegram.
-
----
-
-## Features
-
-- Fetches notices from DUT student portal:
-  - **Training (Đào tạo)**
-  - **Class notices (Lớp học phần)**
-  - **Student Affairs (Công tác SV)**
-  - **Tuition & fees (Học phí, lệ phí)**
-
-- Filters notices (e.g., by class code `23.Nh99`).
-- Stores sent notices in SQLite to avoid duplicates.
-- Sends formatted messages to Telegram with emojis and HTML styling.
+Notice Bot là một ứng dụng viết bằng Rust, dùng để phân tích (parse) thông báo từ HTML và gửi sang Telegram.  
+Điểm chính là nội dung thông báo vẫn giữ nguyên liên kết `<a>` để người nhận có thể bấm trực tiếp trong Telegram.
 
 ---
 
-## Requirements
+## Tính năng
 
-- Rust (edition 2021+ recommended)
-- SQLite (local file)
-- Telegram bot token (from [@BotFather](https://t.me/botfather))
-- `chat_id` (user/group/channel)
-
----
-
-## Setup
-
-Clone the repo:
-
-```bash
-git clone https://github.com/yourname/notify-bot-dut.git
-cd notify-bot-dut
-```
-
-Install dependencies:
-
-```bash
-cargo build
-```
+- Phân tích HTML với cấu trúc `div.tbBox` (gồm caption và content).
+- Trích xuất dữ liệu:
+  - Ngày thông báo (tự nhận diện định dạng `dd/MM/yyyy` và `yyyy-MM-dd`).
+  - Tiêu đề.
+  - Nội dung chi tiết (giữ nguyên link `<a>`).
+- Sinh ra bản ghi `NoticeSent` có `external_id` dựa trên SHA256 của ngày và tiêu đề.
+- Gửi thông báo qua Telegram:
+  - Sử dụng chế độ `HTML parse mode`.
+  - Giữ nguyên link trong nội dung.
 
 ---
 
-## Environment variables
+## Công nghệ
 
-Set these before running:
-
-```bash
-export TELOXIDE_TOKEN="123456:ABC-DEF..."
-export CHAT_ID="123456789"   # or negative number for groups/channels
-```
-
-Optional:
-
-```bash
-export REMINDEE_DB="/path/to/remindee_db.sqlite"
-export SQLITE_MAX_CONNECTIONS=1
-```
+- [Rust](https://www.rust-lang.org/)
+- [scraper](https://crates.io/crates/scraper) để phân tích HTML
+- [sha2](https://crates.io/crates/sha2) để tạo hash
+- [chrono](https://crates.io/crates/chrono) để xử lý ngày giờ
+- [teloxide](https://crates.io/crates/teloxide) để gửi tin nhắn Telegram
 
 ---
 
-## Run the bot
+## Cấu trúc chính
 
-```bash
-cargo run --release
-```
-
-The bot will:
-
-1. Connect to SQLite.
-2. Fetch notices every hour.
-3. Insert unseen notices into DB.
-4. Send them to Telegram.
+- `NoticeSent`: struct chứa dữ liệu thông báo
+- `analysis_notice`: phân tích HTML thành danh sách `NoticeSent`
+- `send_notice`: gửi thông báo sang Telegram
 
 ---
 
-## Run tests
+## Cài đặt và chạy
 
-Unit tests and integration tests:
+1. Cài Rust:
 
-```bash
-cargo test -- --nocapture
-```
+   ```bash
+   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+   ```
 
-Special test for Telegram sending:
+2. Clone dự án:
 
-```bash
-cargo test --test send_notice_test -- --nocapture
-```
+   ```bash
+   git clone https://github.com/your-username/notice-bot.git
+   cd notice-bot
+   ```
 
-Make sure you exported `TELOXIDE_TOKEN` and `CHAT_ID`.
+3. Thiết lập biến môi trường cho Telegram:
+
+   ```bash
+   export BOT_TOKEN=your_bot_token
+   export CHAT_ID=your_chat_id
+   ```
+
+4. Chạy chương trình:
+
+   ```bash
+   cargo run
+   ```
 
 ---
 
-## Example output on Telegram
+## Ví dụ
+
+### HTML đầu vào
+
+```html
+<div class="tbBox">
+  <div class="tbBoxCaption">
+    <b><span>29/08/2025:</span></b>
+    <span>Danh sách thi TOEIC ngày 30/08 </span>
+  </div>
+  <div class="tbBoxContent">
+    <p>
+      - Sinh viên xem danh sách:
+      <a href="https://1drv.ms/b/...">Tại đây</a>
+    </p>
+  </div>
+</div>
+```
+
+### Kết quả sau khi gửi Telegram
 
 ```
-Exam schedule update
-Date: 2025-08-31
+#Exam
+Danh sách thi TOEIC ngày 30/08
+Date: 2025-08-29
 Details:
-Class 23.Nh67 moved to H303
-Sent at: 2025-08-31 12:00:00
+- Sinh viên xem danh sách: Tại đây
+Sent at: 2025-09-01 10:20:30
 ```
 
+Trong đó chữ **"Tại đây"** là link bấm được.
+
+---
+
+## Lưu ý
+
+- Tin nhắn gửi đi dùng `parse_mode = "HTML"`, vì vậy cần đảm bảo nội dung chỉ chứa các thẻ an toàn (ở đây chỉ giữ `<a>`).
+- Các thẻ khác như `<p>`, `<span>`, `<b>` nên loại bỏ để tránh lỗi khi render trên Telegram.
+- Giữa lại thẻ `<a>`
