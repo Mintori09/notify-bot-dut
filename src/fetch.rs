@@ -2,7 +2,7 @@ use anyhow::Result;
 use reqwest::Client;
 use scraper::{Html, Selector};
 
-use crate::entity::NoticeSent;
+use crate::entity::{Category, NoticeSent};
 
 pub fn http_client() -> Client {
     Client::builder()
@@ -16,9 +16,8 @@ pub fn http_client() -> Client {
         .expect("Failed to create reqwest client")
 }
 
-pub fn analysis_notice(html: &str) -> Result<Vec<NoticeSent>> {
+pub fn analysis_notice(html: &str, category: Category) -> Result<Vec<NoticeSent>> {
     let fragment = Html::parse_document(html);
-
     let box_sel = Selector::parse("div.tbBox").unwrap();
     let caption_sel = Selector::parse("div.tbBoxCaption").unwrap();
     let content_sel = Selector::parse("div.tbBoxContent").unwrap();
@@ -38,45 +37,63 @@ pub fn analysis_notice(html: &str) -> Result<Vec<NoticeSent>> {
             .unwrap_or_default();
 
         let (date, title) = if let Some((d, t)) = caption_text.split_once(':') {
-            (d.trim().to_string(), t.trim().to_string())
+            (Some(d.trim().to_string()), t.trim().to_string())
         } else {
-            ("".to_string(), caption_text)
+            (None, caption_text)
         };
 
-        results.push(NoticeSent::new(date, title, content_text));
+        results.push(NoticeSent::new(
+            date,
+            title,
+            if content_text.is_empty() {
+                None
+            } else {
+                Some(content_text)
+            },
+            category.clone(),
+        ));
     }
 
     Ok(results)
 }
 
-/// Training
 pub async fn fetch_training(client: &Client) -> Result<Vec<NoticeSent>> {
     let url =
         "https://sv.dut.udn.vn/WebAjax/evLopHP_Load.aspx?E=CTRTBSV&PAGETB=1&COL=TieuDe&NAME=&TAB=0";
     let body = client.get(url).send().await?.text().await?;
-    analysis_notice(&body)
+    analysis_notice(&body, Category::Training)
 }
 
-/// Class notices
 pub async fn fetch_class_notice(client: &Client) -> Result<Vec<NoticeSent>> {
     let url =
         "https://sv.dut.udn.vn/WebAjax/evLopHP_Load.aspx?E=CTRTBGV&PAGETB=1&COL=TieuDe&NAME=&TAB=1";
     let body = client.get(url).send().await?.text().await?;
-    analysis_notice(&body)
+    analysis_notice(&body, Category::ClassNotice)
 }
 
-/// Student affairs
 pub async fn fetch_student_affairs(client: &Client) -> Result<Vec<NoticeSent>> {
     let url =
         "https://sv.dut.udn.vn/WebAjax/evLopHP_Load.aspx?E=CTRTBSV&PAGETB=1&COL=TieuDe&NAME=&TAB=2";
     let body = client.get(url).send().await?.text().await?;
-    analysis_notice(&body)
+    analysis_notice(&body, Category::StudentAffairs)
 }
 
-/// Tuition
 pub async fn fetch_tuition(client: &Client) -> Result<Vec<NoticeSent>> {
     let url =
         "https://sv.dut.udn.vn/WebAjax/evLopHP_Load.aspx?E=CTRTBSV&PAGETB=1&COL=TieuDe&NAME=&TAB=4";
     let body = client.get(url).send().await?.text().await?;
-    analysis_notice(&body)
+    analysis_notice(&body, Category::Tuition)
+}
+
+pub async fn fetch_all_notices(client: &reqwest::Client) -> Result<Vec<NoticeSent>> {
+    let mut all = Vec::new();
+
+    all.extend(fetch_training(client).await?);
+    all.extend(fetch_class_notice(client).await?);
+    all.extend(fetch_student_affairs(client).await?);
+    all.extend(fetch_tuition(client).await?);
+
+    all.sort_by(|a, b| a.published_date.cmp(&b.published_date));
+
+    Ok(all)
 }

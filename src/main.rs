@@ -1,8 +1,8 @@
-use anyhow::{Result, anyhow};
-
-use notify_bot_dut::bot;
+use notify_bot_dut::{bot, scheduler::run_scheduler};
 
 #[tokio::main]
-async fn main() -> Result<()> {
-    bot::run().await.map_err(|e| anyhow!("Error at main: {e}"))
+async fn main() -> anyhow::Result<()> {
+    run_scheduler(|| async { bot::run().await }).await;
+
+    Ok(())
 }

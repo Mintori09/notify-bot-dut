@@ -1,6 +1,6 @@
 use notify_bot_dut::entity::NoticeSent;
-use notify_bot_dut::fetch;
 use notify_bot_dut::fetch::http_client;
+use notify_bot_dut::fetch::{self};
 
 #[tokio::test]
 async fn test_fetch_class_notice() {
