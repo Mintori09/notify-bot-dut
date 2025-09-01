@@ -1,6 +1,7 @@
 pub mod bot;
 pub mod cli;
 pub mod controller;
+pub mod utils;
 pub mod database;
 pub mod entities;
 pub mod entity;
