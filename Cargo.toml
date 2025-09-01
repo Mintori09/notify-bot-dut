@@ -8,11 +8,7 @@ directories = "6.0.0"
 once_cell = "1.21.3"
 tokio = { version = "1.47.1", features = ["full"] }
 clap = { version = "4.5.46", features = ["derive", "env", "string"] }
-dirs = "6.0.0"
 chrono = "0.4"
-chrono-tz = "0.10"
-chronoutil = "0.2"
-cron-parser = "0.10"
 serde_json = "1.0"
 anyhow = "1.0.99"
 
@@ -22,14 +18,10 @@ reqwest = { version = "0.12", features = ["json", "rustls-tls"] }
 
 # logging
 tracing = "0.1"
-tracing-subscriber = "0.3"
 scraper = "0.24.0"
 sha2 = "0.10.9"
 html-escape = "0.2.13"
 dotenv = "0.15.0"
-[dependencies.sea-orm-migration]
-version = "1.1.15"
-features = ["runtime-tokio-rustls", "sqlx-postgres"]
 
 [dependencies.sea-orm]
 version = "1.1.15"
@@ -42,3 +34,10 @@ features = ["macros", "sqlite-storage-rustls"]
 [dependencies.serde]
 version = "1.0"
 features = ["derive"]
+
+[profile.release]
+opt-level = "z"   # tối ưu hóa cho dung lượng (thay vì tốc độ)
+lto = true        # bật Link Time Optimization
+codegen-units = 1 # giảm số đơn vị biên dịch, giúp tối ưu hơn
+panic = "abort"   # bỏ unwinding, giảm size
+strip = true      # tự động strip symbol (Rust >= 1.70)
