@@ -6,37 +6,82 @@ use crate::database::{self, Config};
 use crate::entity::NoticeSent;
 use crate::fetch::{fetch_all_notices, http_client};
 use anyhow::Result;
-use teloxide::prelude::*;
+use sea_orm::DbConn;
+use teloxide::{ApiError, RequestError, prelude::*};
 use teloxide::{Bot, types::ChatId};
 use tokio::time::sleep;
 
-pub async fn run() -> Result<()> {
+pub async fn run(db: &DbConn) -> Result<()> {
     // 1. Load config
     let config = Config::init();
 
-    // 2. Connect to DB
-    let db = database::connect(&config.database_url, 5).await?;
-
-    // 3. Init HTTP client + Telegram bot
+    // 2. Init HTTP client + Telegram bot
     let client = Arc::new(http_client());
     let bot = Bot::new(&config.teloxide_token);
     let chat_id = ChatId(config.chat_id);
 
-    // 4. Fetch notices from source
+    // 3. Fetch notices from source
     let notices: Vec<NoticeSent> = fetch_all_notices(&client).await?;
 
-    // 5. Insert + send
+    // 4. Insert + send
     for notice in notices {
-        match check_and_insert(&db, &notice).await {
+        match check_and_insert(db, &notice).await {
             Ok(true) => {
-                sleep(Duration::from_secs(1)).await;
-                if let Err(err) = send_notice(&bot, chat_id, &notice).await {
-                    eprintln!("Failed to send notice {}: {}", notice.title, err);
+                // new notice → try sending with retry
+                loop {
+                    match send_notice(&bot, chat_id, &notice).await {
+                        Ok(_) => {
+                            println!("✅ Sent notice: {}", notice.title);
+                            break;
+                        }
+                        Err(err) => {
+                            // Is this a teloxide RequestError?
+                            if let Some(req_err) = err.downcast_ref::<RequestError>() {
+                                match req_err {
+                                    // Telegram said: wait N seconds (flood control)
+                                    RequestError::RetryAfter(_secs) => {
+                                        // `Seconds` is a newtype over u32: sleep for that many seconds
+                                        // convert Seconds → u64
+                                        sleep(Duration::from_secs(5)).await;
+                                        continue;
+                                    }
+                                    // Other Telegram API errors: brief backoff and retry
+                                    RequestError::Api(api_err) => {
+                                        eprintln!(
+                                            "⚠️ Telegram API error for '{}': {}",
+                                            notice.title, api_err
+                                        );
+                                        sleep(Duration::from_secs(5)).await;
+                                        continue;
+                                    }
+                                    // Network, IO, etc.: brief backoff and retry
+                                    _ => {
+                                        eprintln!(
+                                            "⚠️ Request error for '{}': {}",
+                                            notice.title, req_err
+                                        );
+                                        sleep(Duration::from_secs(5)).await;
+                                        continue;
+                                    }
+                                }
+                            }
+
+                            // Not a teloxide RequestError (some other anyhow/source error): brief backoff
+                            eprintln!(
+                                "⚠️ Failed to send '{}': {} → retrying in 5s",
+                                notice.title, err
+                            );
+                            sleep(Duration::from_secs(5)).await;
+                            continue;
+                        }
+                    }
                 }
             }
-            Ok(false) => {}
+            Ok(false) => {
+                // already exists → skip
+            }
             Err(err) => {
-                eprintln!("Failed to check/insert {}: {}", notice.title, err);
+                eprintln!("❌ Failed to check/insert {}: {}", notice.title, err);
             }
         }
     }
@@ -53,7 +98,7 @@ pub async fn send_notice(bot: &Bot, chat_id: ChatId, notice: &NoticeSent) -> Res
     let body_str = notice
         .body
         .as_ref()
-        .map(|b| html_escape::encode_text(b).to_string())
+        .cloned()
         .unwrap_or_else(|| "No details".to_string());
 
     let sent_at_str = notice.sent_at.format("%Y-%m-%d %H:%M:%S").to_string();

@@ -112,22 +112,21 @@ impl NoticeSent {
         content: Option<String>,
         category: Category,
     ) -> Self {
+        use chrono::Utc;
         use sha2::{Digest, Sha256};
 
-        // external_id = hash(date + title)
         let mut hasher = Sha256::new();
-        if let Some(d) = &date {
-            hasher.update(d.as_bytes());
-        }
+        hasher.update(date.clone().unwrap_or_default().as_bytes());
         hasher.update(title.as_bytes());
         let hash = format!("{:x}", hasher.finalize());
 
-        // sent_at = current UTC timestamp
         let sent_at = Utc::now().naive_utc();
 
-        // parse date if provided
-        let published_date =
-            date.and_then(|d| chrono::NaiveDate::parse_from_str(&d, "%Y-%m-%d").ok());
+        let published_date = date.as_ref().and_then(|d| {
+            chrono::NaiveDate::parse_from_str(d, "%Y-%m-%d")
+                .or_else(|_| chrono::NaiveDate::parse_from_str(d, "%d/%m/%Y"))
+                .ok()
+        });
 
         NoticeSent {
             id: 0,
