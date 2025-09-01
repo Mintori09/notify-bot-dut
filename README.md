@@ -48,14 +48,15 @@ Notice Bot là một ứng dụng viết bằng Rust, dùng để phân tích (p
 2. Clone dự án:
 
    ```bash
-   git clone https://github.com/your-username/notice-bot.git
+   git clone https://github.com/Mintori09/notify-bot-dut.git
    cd notice-bot
    ```
 
 3. Thiết lập biến môi trường cho Telegram:
 
    ```bash
-   export BOT_TOKEN=your_bot_token
+   export DATABASE_URL=your_database_url
+   export TELOXIDE_TOKEN=your_bot_token
    export CHAT_ID=your_chat_id
    ```
 
