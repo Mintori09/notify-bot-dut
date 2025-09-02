@@ -1,6 +1,6 @@
 use crate::database::Config;
 use crate::entity::{Category, NoticeSent};
-use anyhow::{Result, anyhow};
+use anyhow::Result;
 use tokio::net::TcpStream;
 use tokio::time::{Duration, sleep};
 
