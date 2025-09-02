@@ -1,30 +1,46 @@
-use chrono::{NaiveDate, NaiveDateTime};
 use notify_bot_dut::{
     bot::send_notice,
     entity::{Category, NoticeSent},
 };
-use std::env;
-use teloxide::{prelude::*, types::ChatId};
 
 #[tokio::test]
+#[ignore]
 async fn test_send_notice() {
-    let token = env::var("TELOXIDE_TOKEN").expect("TELOXIDE_TOKEN not set");
-    let chat_id: i64 = env::var("CHAT_ID")
-        .expect("CHAT_ID not set")
-        .parse()
-        .expect("CHAT_ID must be number");
+    let token = match std::env::var("TELOXIDE_TOKEN") {
+        Ok(v) => v,
+        Err(_) => {
+            eprintln!("⚠️  Skipping test_send_notice: TELOXIDE_TOKEN not set");
+            return;
+        }
+    };
 
-    let bot = Bot::new(token);
-    let chat_id = ChatId(chat_id);
+    let chat_id: i64 = match std::env::var("CHAT_ID") {
+        Ok(v) => match v.parse() {
+            Ok(id) => id,
+            Err(_) => {
+                eprintln!("⚠️  Skipping test_send_notice: CHAT_ID must be number");
+                return;
+            }
+        },
+        Err(_) => {
+            eprintln!("⚠️  Skipping test_send_notice: CHAT_ID not set");
+            return;
+        }
+    };
+
+    let bot = teloxide::Bot::new(token);
+    let chat_id = teloxide::types::ChatId(chat_id);
 
     let notice = NoticeSent {
         id: 0,
-        main_category: Category::ClassNotice,
+        main_category: Category::Tuition,
         external_id: "test123".to_string(),
-        published_date: Some(NaiveDate::parse_from_str("2025-08-31", "%Y-%m-%d").unwrap()),
+        published_date: Some(chrono::NaiveDate::parse_from_str("2025-08-31", "%Y-%m-%d").unwrap()),
         title: "Test Message from notify-bot-dut".to_string(),
         body: Some("This is a test notice sent via Telegram bot.".to_string()),
-        sent_at: NaiveDateTime::parse_from_str("2025-08-31 23:59:59", "%Y-%m-%d %H:%M:%S").unwrap(),
+        sent_at: chrono::NaiveDateTime::parse_from_str("2025-08-31 23:59:59", "%Y-%m-%d %H:%M:%S")
+            .unwrap(),
+        sent_ok: 0,
     };
 
     let result = send_notice(&bot, chat_id, &notice).await;

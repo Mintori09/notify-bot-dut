@@ -1,6 +1,9 @@
-use chrono::{NaiveDate, NaiveDateTime, Utc};
+use anyhow::{Result, anyhow};
+use chrono::{NaiveDate, NaiveDateTime};
 use serde::{Deserialize, Serialize};
 use std::{fmt, str::FromStr};
+
+use crate::entities::notice_sent;
 
 /// Categories allowed in DB
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -88,6 +91,19 @@ mod datetime_format {
         NaiveDateTime::parse_from_str(&s, FORMAT).map_err(serde::de::Error::custom)
     }
 }
+impl TryFrom<String> for Category {
+    type Error = anyhow::Error;
+
+    fn try_from(value: String) -> Result<Self> {
+        match value.as_str() {
+            "Training" => Ok(Category::Training),
+            "ClassNotice" => Ok(Category::ClassNotice),
+            "StudentAffairs" => Ok(Category::StudentAffairs),
+            "Tuition" => Ok(Category::Tuition),
+            _ => Err(anyhow!("Invalid category string: {}", value)),
+        }
+    }
+}
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct NoticeSent {
@@ -103,6 +119,24 @@ pub struct NoticeSent {
 
     #[serde(with = "datetime_format")]
     pub sent_at: NaiveDateTime, // TIMESTAMP
+    pub sent_ok: i32,
+}
+
+impl TryFrom<notice_sent::Model> for NoticeSent {
+    type Error = anyhow::Error;
+
+    fn try_from(model: notice_sent::Model) -> Result<Self, Self::Error> {
+        Ok(NoticeSent {
+            id: model.id,
+            main_category: Category::try_from(model.main_category)?,
+            external_id: model.external_id,
+            published_date: model.published_date,
+            title: model.title,
+            body: model.body,
+            sent_at: model.sent_at,
+            sent_ok: model.sent_ok,
+        })
+    }
 }
 
 impl NoticeSent {
@@ -136,6 +170,7 @@ impl NoticeSent {
             title,
             body: content,
             sent_at,
+            sent_ok: 0,
         }
     }
 }

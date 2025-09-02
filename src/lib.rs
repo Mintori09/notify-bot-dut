@@ -1,10 +1,10 @@
 pub mod bot;
-pub mod cli;
+// pub mod cli;
 pub mod controller;
-pub mod utils;
 pub mod database;
 pub mod entities;
 pub mod entity;
 pub mod fetch;
 pub mod scheduler;
+pub mod utils;
 pub mod validate;

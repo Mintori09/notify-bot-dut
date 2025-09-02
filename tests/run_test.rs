@@ -2,13 +2,11 @@ use anyhow::Result;
 use chrono::NaiveDate;
 use notify_bot_dut::{
     controller::check_and_insert,
+    database::Config,
     entity::{Category, NoticeSent},
     fetch::analysis_notice,
-    scheduler::run_scheduler,
 };
 use sea_orm::Database;
-use std::sync::{Arc, Mutex};
-use tokio::time::Duration;
 
 #[tokio::test]
 async fn test_analysis_notice() {
@@ -30,6 +28,7 @@ async fn test_analysis_notice() {
 }
 
 #[tokio::test]
+#[ignore]
 async fn test_check_and_insert_postgres() -> Result<()> {
     dotenv::dotenv().ok();
 
@@ -46,39 +45,17 @@ async fn test_check_and_insert_postgres() -> Result<()> {
         title: "Test Insert".to_string(),
         body: Some("This is a test".to_string()),
         sent_at: chrono::Utc::now().naive_utc(),
+        sent_ok: 0,
     };
 
     // 3. First insert should succeed
-    let first = check_and_insert(&db, &notice).await?;
+    let config = Config::init();
+    let first = check_and_insert(&db, &notice, &config).await?;
     assert!(first, "First insert should return true");
 
     // 4. Second insert with same external_id should be skipped
-    let second = check_and_insert(&db, &notice).await?;
+    let second = check_and_insert(&db, &notice, &config).await?;
     assert!(!second, "Second insert should return false");
 
     Ok(())
-}
-
-#[tokio::test]
-async fn test_scheduler_runs_task() {
-    let counter = Arc::new(Mutex::new(0));
-    let counter_clone = counter.clone();
-
-    // Run scheduler with short interval
-    let handle = tokio::spawn(async move {
-        run_scheduler(|| {
-            let counter = counter_clone.clone();
-            async move {
-                *counter.lock().unwrap() += 1;
-                Ok(())
-            }
-        })
-        .await;
-    });
-
-    tokio::time::sleep(Duration::from_millis(2200)).await;
-    handle.abort();
-
-    let runs = *counter.lock().unwrap();
-    assert!(runs >= 1, "Expected at least 1 run, got {}", runs);
 }

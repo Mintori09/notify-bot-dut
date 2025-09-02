@@ -30,6 +30,12 @@ impl MigrationTrait for Migration {
                             .not_null()
                             .default(Expr::cust("CURRENT_TIMESTAMP")),
                     )
+                    .col(
+                        ColumnDef::new(NoticeSent::SentOk)
+                            .integer()
+                            .not_null()
+                            .default(0),
+                    )
                     .check(Expr::cust(
                         "(main_category IN ('Training','ClassNotice','StudentAffairs','Tuition'))",
                     ))
@@ -66,4 +72,5 @@ enum NoticeSent {
     Body,
     Title,
     SentAt,
+    SentOk,
 }
