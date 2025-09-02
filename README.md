@@ -58,6 +58,7 @@ Notice Bot là một ứng dụng viết bằng Rust, dùng để phân tích (p
    export DATABASE_URL=your_database_url
    export TELOXIDE_TOKEN=your_bot_token
    export CHAT_ID=your_chat_id
+   export FILTER_NOTICE="your_filter","this_is_whitelist"
    ```
 
 4. Chạy chương trình:
