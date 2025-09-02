@@ -1,4 +1,4 @@
-# Notice Bot
+# Notice Bot (Trường Đại Học bách khoa - Đại học Đà Nẵng - DUT)
 
 Notice Bot là một ứng dụng viết bằng Rust, dùng để phân tích (parse) thông báo từ HTML và gửi sang Telegram.  
 Điểm chính là nội dung thông báo vẫn giữ nguyên liên kết `<a>` để người nhận có thể bấm trực tiếp trong Telegram.
