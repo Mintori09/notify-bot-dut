@@ -91,6 +91,7 @@ mod datetime_format {
         NaiveDateTime::parse_from_str(&s, FORMAT).map_err(serde::de::Error::custom)
     }
 }
+
 impl TryFrom<String> for Category {
     type Error = anyhow::Error;
 

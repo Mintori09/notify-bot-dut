@@ -26,9 +26,9 @@ impl MigrationTrait for Migration {
                     .col(ColumnDef::new(NoticeSent::Title).text().not_null())
                     .col(
                         ColumnDef::new(NoticeSent::SentAt)
-                            .timestamp()
+                            .date_time()
                             .not_null()
-                            .default(Expr::cust("CURRENT_TIMESTAMP")),
+                            .default(Expr::cust("CURRENT_DATE")),
                     )
                     .col(
                         ColumnDef::new(NoticeSent::SentOk)

@@ -29,7 +29,6 @@ async fn test_send_notice() -> anyhow::Result<()> {
     );
 
     let config = Config::init();
-
     let _client = Arc::new(http_client());
     let bot = Bot::new(&config.teloxide_token);
     let chat_id = ChatId(config.chat_id);
@@ -37,17 +36,13 @@ async fn test_send_notice() -> anyhow::Result<()> {
     match check_and_insert(&db, &notice, &config).await {
         Ok(true) => {
             let result = send_notice(&bot, chat_id, &notice).await;
-            assert!(
-                result.is_ok(),
-                "❌ Failed to send notice: {:?}",
-                result.err()
-            );
+            assert!(result.is_ok(), "Failed to send notice: {:?}", result.err());
         }
         Ok(false) => {
             panic!("Notice already existed, test needs unique external_id");
         }
         Err(err) => {
-            panic!("❌ Failed to check/insert {}: {}", notice.title, err);
+            panic!("Failed to check/insert {}: {}", notice.title, err);
         }
     }
 

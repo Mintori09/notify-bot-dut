@@ -26,7 +26,7 @@ async-trait = "0.1.89"
 
 [dependencies.sea-orm]
 version = "1.1.15"
-features = ["runtime-tokio-rustls", "sqlx-postgres", "macros"]
+features = ["runtime-tokio-rustls", "sqlx-postgres","sqlx-mysql", "macros"]
 
 [dependencies.teloxide]
 version = "0.17"
