@@ -10,7 +10,8 @@ async fn main() -> anyhow::Result<()> {
     let config = Config::init();
     println!("Config: {:?}", config);
 
-    let db = database::connect(&config.database_url, 5).await?;
+    let db = database::connect(&config.database_url).await?;
+    database::ensure_schema(&db).await?;
 
     run_scheduler(|| async {
         wait_for_internet(300).await;

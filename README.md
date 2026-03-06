@@ -1,7 +1,6 @@
-# Notice Bot (Trường Đại Học bách khoa - Đại học Đà Nẵng - DUT)
+# notify-bot-dut
 
-Notice Bot là một ứng dụng viết bằng Rust, dùng để phân tích (parse) thông báo từ HTML và gửi sang Telegram.  
-Điểm chính là nội dung thông báo vẫn giữ nguyên liên kết `<a>` để người nhận có thể bấm trực tiếp trong Telegram.
+Telegram bot viết bằng Rust, tự động theo dõi và gửi thông báo từ trang web Trường Đại học Bách khoa - Đại học Đà Nẵng (DUT).
 
 ![Preview](https://github.com/Mintori09/notify-bot-dut/blob/main/images/preview.png)
 
@@ -9,104 +8,90 @@ Notice Bot là một ứng dụng viết bằng Rust, dùng để phân tích (p
 
 ## Tính năng
 
-- Phân tích HTML với cấu trúc `div.tbBox` (gồm caption và content).
-- Trích xuất dữ liệu:
-  - Ngày thông báo (tự nhận diện định dạng `dd/MM/yyyy` và `yyyy-MM-dd`).
-  - Tiêu đề.
-  - Nội dung chi tiết (giữ nguyên link `<a>`).
-- Sinh ra bản ghi `NoticeSent` có `external_id` dựa trên SHA256 của ngày và tiêu đề.
-- Gửi thông báo qua Telegram:
-  - Sử dụng chế độ `HTML parse mode`.
-  - Giữ nguyên link trong nội dung.
+- Tự động lấy thông báo từ các danh mục: Đào tạo, Thông báo lớp, Công tác sinh viên, Học phí.
+- Phân tích HTML với cấu trúc `div.tbBox`, trích xuất tiêu đề, ngày đăng, và nội dung (giữ nguyên link `<a>`).
+- Tạo `external_id` bằng SHA-256 của ngày + tiêu đề để tránh gửi trùng.
+- Lưu lịch sử thông báo vào SQLite (`~/.config/notify-bot-dut/college.db`) — không cần cài database.
+- Gửi tin nhắn qua Telegram với `HTML parse mode`, hỗ trợ link bấm được.
+- Tự động tạo bảng khi khởi động lần đầu — không cần chạy migration thủ công.
+- Lịch chạy định kỳ, tự chờ khi mất mạng và xử lý rate-limit của Telegram.
 
 ---
 
 ## Công nghệ
 
 - [Rust](https://www.rust-lang.org/)
-- [scraper](https://crates.io/crates/scraper) để phân tích HTML
-- [sha2](https://crates.io/crates/sha2) để tạo hash
-- [chrono](https://crates.io/crates/chrono) để xử lý ngày giờ
-- [teloxide](https://crates.io/crates/teloxide) để gửi tin nhắn Telegram
-
----
-
-## Cấu trúc chính
-
-- `NoticeSent`: struct chứa dữ liệu thông báo
-- `analysis_notice`: phân tích HTML thành danh sách `NoticeSent`
-- `send_notice`: gửi thông báo sang Telegram
+- [sqlx](https://crates.io/crates/sqlx) + SQLite — lưu trữ nhẹ, không cần server
+- [teloxide](https://crates.io/crates/teloxide) — Telegram bot
+- [scraper](https://crates.io/crates/scraper) — phân tích HTML
+- [reqwest](https://crates.io/crates/reqwest) — HTTP client
+- [chrono](https://crates.io/crates/chrono) — xử lý ngày giờ
+- [sha2](https://crates.io/crates/sha2) — tạo hash
 
 ---
 
 ## Cài đặt và chạy
 
-1. Cài Rust:
+### 1. Cài Rust
 
-   ```bash
-   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-   ```
+```bash
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+```
 
-2. Clone dự án:
+### 2. Clone và build
 
-   ```bash
-   git clone https://github.com/Mintori09/notify-bot-dut.git
-   cd notice-bot
-   ```
+```bash
+git clone https://github.com/Mintori09/notify-bot-dut.git
+cd notify-bot-dut
+cargo build --release
+```
 
-3. Thiết lập biến môi trường cho Telegram:
+### 3. Thiết lập biến môi trường
 
-   ```bash
-   export DATABASE_URL=your_database_url
-   export TELOXIDE_TOKEN=your_bot_token
-   export CHAT_ID=your_chat_id
-   export FILTER_NOTICE="your_filter","this_is_whitelist"
-   ```
+Tạo file `.env` (hoặc export trực tiếp):
 
-4. Chạy chương trình:
+```bash
+export TELOXIDE_TOKEN=your_bot_token
+export CHAT_ID=your_chat_id
+# Tuỳ chọn: lọc chỉ giữ thông báo có chứa từ khoá (whitelist, phân cách bằng dấu phẩy)
+export FILTER_NOTICE=keyword1,keyword2
+```
 
-   ```bash
-   cargo run
-   ```
+> **DATABASE_URL không cần thiết.** Database SQLite tự động lưu tại `~/.config/notify-bot-dut/college.db`.
+
+### 4. Chạy
+
+```bash
+./target/release/notify-bot-dut
+```
 
 ---
 
-## Ví dụ
-
-### HTML đầu vào
-
-```html
-<div class="tbBox">
-  <div class="tbBoxCaption">
-    <b><span>29/08/2025:</span></b>
-    <span>Danh sách thi TOEIC ngày 30/08 </span>
-  </div>
-  <div class="tbBoxContent">
-    <p>
-      - Sinh viên xem danh sách:
-      <a href="https://1drv.ms/b/...">Tại đây</a>
-    </p>
-  </div>
-</div>
-```
-
-### Kết quả sau khi gửi Telegram
+## Cấu trúc dự án
 
 ```
-#Exam
-Danh sách thi TOEIC ngày 30/08
-Date: 2025-08-29
-Details:
-- Sinh viên xem danh sách: Tại đây
-Sent at: 2025-09-01 10:20:30
+src/
+├── main.rs        # Entrypoint, kết nối DB và khởi động scheduler
+├── bot.rs         # Vòng lặp fetch → insert → gửi Telegram
+├── controller.rs  # Truy vấn DB (sqlx): check_and_insert, mark_as_sent, get_unsent
+├── database.rs    # Kết nối SQLitePool, ensure_schema, Config
+├── entity.rs      # Struct NoticeSent, enum Category
+├── fetch.rs       # Fetch và parse HTML từ website DUT
+├── scheduler.rs   # Chạy task định kỳ
+└── utils.rs       # Lọc thông báo theo FILTER_NOTICE
 ```
-
-Trong đó chữ **"Tại đây"** là link bấm được.
 
 ---
 
-## Lưu ý
+## Ví dụ tin nhắn Telegram
 
-- Tin nhắn gửi đi dùng `parse_mode = "HTML"`, vì vậy cần đảm bảo nội dung chỉ chứa các thẻ an toàn (ở đây chỉ giữ `<a>`).
-- Các thẻ khác như `<p>`, `<span>`, `<b>` nên loại bỏ để tránh lỗi khi render trên Telegram.
-- Giữa lại thẻ `<a>`
+```
+#Training
+<b>Danh sách thi TOEIC ngày 30/08</b>
+<b>Date:</b> 2025-08-29
+<b>Details:</b>
+- Sinh viên xem danh sách: <a href="...">Tại đây</a>
+<i>Sent at: 2025-09-01 10:20:30</i>
+```
+
+Chữ **"Tại đây"** là link bấm được trực tiếp trong Telegram.

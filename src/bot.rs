@@ -5,11 +5,11 @@ use crate::database::Config;
 use crate::entity::NoticeSent;
 use crate::fetch::{fetch_all_notices, http_client};
 use anyhow::Result;
-use sea_orm::DbConn;
+use sqlx::SqlitePool;
 use teloxide::prelude::*;
 use teloxide::{Bot, types::ChatId};
 
-pub async fn run(db: &DbConn, config: &Config) -> Result<()> {
+pub async fn run(db: &SqlitePool, config: &Config) -> Result<()> {
     use tokio::time::{Duration, sleep};
     let client = Arc::new(http_client());
     let (bot, chat_id) = build_bot(&config)?;
@@ -33,15 +33,25 @@ pub async fn run(db: &DbConn, config: &Config) -> Result<()> {
                 }
                 Err(err) => {
                     retries += 1;
+                    let err_str = err.to_string();
+                    // Parse "Retry after N" from Telegram flood-control errors
+                    let wait_secs = err_str
+                        .to_lowercase()
+                        .split("retry after")
+                        .nth(1)
+                        .and_then(|s| s.split_whitespace().next())
+                        .and_then(|s| s.trim_end_matches('s').parse::<u64>().ok())
+                        .map(|n| n + 1) // +1s buffer
+                        .unwrap_or(5);
                     eprintln!(
-                        "Failed to send '{}': {} (retry {}/5)",
-                        notice.title, err, retries
+                        "Failed to send '{}': {} (retry {}/5, waiting {}s)",
+                        notice.title, err_str, retries, wait_secs
                     );
                     if retries >= 5 {
                         eprintln!("Giving up on '{}'", notice.title);
                         break;
                     }
-                    sleep(Duration::from_secs(5)).await;
+                    sleep(Duration::from_secs(wait_secs)).await;
                     continue;
                 }
             }

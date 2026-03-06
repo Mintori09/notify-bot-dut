@@ -6,7 +6,6 @@ use notify_bot_dut::{
     entity::{Category, NoticeSent},
     fetch::analysis_notice,
 };
-use sea_orm::Database;
 
 #[tokio::test]
 async fn test_analysis_notice() {
@@ -29,14 +28,12 @@ async fn test_analysis_notice() {
 
 #[tokio::test]
 #[ignore]
-async fn test_check_and_insert_postgres() -> Result<()> {
+async fn test_check_and_insert_sqlite() -> Result<()> {
     dotenv::dotenv().ok();
 
-    // 1. Connect to Postgres (make sure migrations are applied!)
-    let url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-    let db = Database::connect(&url).await?;
+    let pool = sqlx::SqlitePool::connect("sqlite::memory:").await?;
+    notify_bot_dut::database::ensure_schema(&pool).await?;
 
-    // 2. Create a test notice
     let notice = NoticeSent {
         id: 0,
         main_category: Category::Training,
@@ -48,13 +45,11 @@ async fn test_check_and_insert_postgres() -> Result<()> {
         sent_ok: 0,
     };
 
-    // 3. First insert should succeed
     let config = Config::init();
-    let first = check_and_insert(&db, &notice, &config).await?;
+    let first = check_and_insert(&pool, &notice, &config).await?;
     assert!(first, "First insert should return true");
 
-    // 4. Second insert with same external_id should be skipped
-    let second = check_and_insert(&db, &notice, &config).await?;
+    let second = check_and_insert(&pool, &notice, &config).await?;
     assert!(!second, "Second insert should return false");
 
     Ok(())

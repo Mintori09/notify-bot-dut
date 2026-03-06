@@ -14,8 +14,8 @@ use teloxide::{Bot, types::ChatId};
 async fn test_send_notice() -> anyhow::Result<()> {
     dotenv::dotenv().ok();
 
-    let url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for tests");
-    let db = database::connect(&url, 1).await?;
+    let config = Config::init();
+    let db = database::connect(&config.database_url).await?;
 
     let mut hasher = Sha256::new();
     hasher.update(b"sdfjklsdfjli");

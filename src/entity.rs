@@ -3,8 +3,6 @@ use chrono::{NaiveDate, NaiveDateTime};
 use serde::{Deserialize, Serialize};
 use std::{fmt, str::FromStr};
 
-use crate::entities::notice_sent;
-
 /// Categories allowed in DB
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum Category {
@@ -123,22 +121,6 @@ pub struct NoticeSent {
     pub sent_ok: i32,
 }
 
-impl TryFrom<notice_sent::Model> for NoticeSent {
-    type Error = anyhow::Error;
-
-    fn try_from(model: notice_sent::Model) -> Result<Self, Self::Error> {
-        Ok(NoticeSent {
-            id: model.id,
-            main_category: Category::try_from(model.main_category)?,
-            external_id: model.external_id,
-            published_date: model.published_date,
-            title: model.title,
-            body: model.body,
-            sent_at: model.sent_at,
-            sent_ok: model.sent_ok,
-        })
-    }
-}
 
 impl NoticeSent {
     pub fn new(

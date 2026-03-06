@@ -1,7 +1,8 @@
 use anyhow::{Result, anyhow};
+use directories::ProjectDirs;
 use dotenv::dotenv;
-use sea_orm::{ConnectOptions, Database, DbConn};
-use std::env;
+use sqlx::SqlitePool;
+use std::{env, fs};
 
 #[derive(Clone, Debug)]
 pub struct Config {
@@ -15,9 +16,21 @@ impl Config {
     pub fn init() -> Self {
         dotenv().ok();
 
+        let db_url = ProjectDirs::from("com", "", "notify-bot-dut")
+            .map(|dirs| {
+                let config_dir = dirs.config_dir().to_path_buf();
+                fs::create_dir_all(&config_dir)
+                    .expect("Failed to create config directory");
+                format!(
+                    "sqlite://{}?mode=rwc",
+                    config_dir.join("college.db").display()
+                )
+            })
+            .unwrap_or_else(|| "sqlite://college.db?mode=rwc".to_string());
+
         Self {
-            teloxide_token: env::var("TELOXIDE_TOKEN").expect("TELEXIDE_TOKEN must be set"),
-            database_url: env::var("DATABASE_URL").expect("DATABASE_URL must be set"),
+            teloxide_token: env::var("TELOXIDE_TOKEN").expect("TELOXIDE_TOKEN must be set"),
+            database_url: db_url,
             chat_id: env::var("CHAT_ID")
                 .expect("CHAT_ID must be set")
                 .parse::<i64>()
@@ -29,17 +42,35 @@ impl Config {
     }
 }
 
-pub async fn connect(database_url: &str, max_connections: u32) -> Result<DbConn> {
-    let mut connect_options = ConnectOptions::new(database_url.to_owned());
-
-    connect_options
-        .max_connections(max_connections)
-        .sqlx_logging(true);
-
-    let db = Database::connect(connect_options)
+pub async fn connect(database_url: &str) -> Result<SqlitePool> {
+    let pool = SqlitePool::connect(database_url)
         .await
         .map_err(|e| anyhow!("Connection error: {e}"))?;
 
-    println!("Connected to Postgres: {}", database_url);
-    Ok(db)
+    println!("Connected to SQLite: {}", database_url);
+    Ok(pool)
+}
+
+pub async fn ensure_schema(pool: &SqlitePool) -> Result<()> {
+    sqlx::query(
+        r#"CREATE TABLE IF NOT EXISTS notice_sent (
+            id             INTEGER  NOT NULL PRIMARY KEY AUTOINCREMENT,
+            main_category  TEXT     NOT NULL,
+            external_id    TEXT     NOT NULL,
+            published_date DATE     NULL,
+            body           TEXT     NULL,
+            title          TEXT     NOT NULL,
+            sent_at        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            sent_ok        INTEGER  NOT NULL DEFAULT 0,
+            CHECK (main_category IN ('Training','ClassNotice','StudentAffairs','Tuition')),
+            CHECK (length(external_id) > 0),
+            CHECK (body IS NULL OR length(trim(body)) > 0),
+            CHECK (length(trim(title)) >= 3),
+            UNIQUE (main_category, external_id)
+        )"#,
+    )
+    .execute(pool)
+    .await
+    .map_err(|e| anyhow!("Schema error: {e}"))?;
+    Ok(())
 }

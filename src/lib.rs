@@ -2,7 +2,6 @@ pub mod bot;
 // pub mod cli;
 pub mod controller;
 pub mod database;
-pub mod entities;
 pub mod entity;
 pub mod fetch;
 pub mod scheduler;
