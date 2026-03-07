@@ -5,7 +5,8 @@ use tokio::net::TcpStream;
 use tokio::time::{Duration, sleep};
 
 pub async fn has_internet() -> bool {
-    TcpStream::connect(("8.8.8.8", 53)).await.is_ok()
+    // Check the actual DUT host, not just generic internet
+    TcpStream::connect(("sv.dut.udn.vn", 443)).await.is_ok()
 }
 
 pub async fn wait_for_internet(interval: u64) {
@@ -14,7 +15,7 @@ pub async fn wait_for_internet(interval: u64) {
             println!("Internet connection detected");
             break;
         } else {
-            println!("No internet, retrying in {interval} seconds...");
+            println!("sv.dut.udn.vn unreachable, retrying in {interval} seconds...");
             sleep(Duration::from_secs(interval)).await;
         }
     }

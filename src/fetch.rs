@@ -13,7 +13,8 @@ pub fn http_client() -> Client {
                      AppleWebKit/537.36 (KHTML, like Gecko) \
                      Chrome/117.0.0.0 Safari/537.36",
         )
-        .timeout(std::time::Duration::from_secs(15))
+        .timeout(std::time::Duration::from_secs(30))
+        .danger_accept_invalid_certs(true)
         .build()
         .expect("Failed to create reqwest client")
 }
@@ -104,7 +105,16 @@ pub async fn fetch_category(
                 },
                 Err(err) => eprintln!("Failed to read response body for {category}: {err}"),
             },
-            Err(err) => eprintln!("HTTP request failed for {category}: {err}"),
+            Err(err) => {
+                // Print full error chain for diagnosis
+                let mut cause: &dyn std::error::Error = &err;
+                eprint!("HTTP request failed for {category}: {cause}");
+                while let Some(src) = cause.source() {
+                    eprint!(" → {src}");
+                    cause = src;
+                }
+                eprintln!();
+            }
         }
 
         println!("⏳ Retrying {category} fetch in 10s...");

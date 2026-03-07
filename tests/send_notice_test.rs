@@ -12,9 +12,8 @@ use teloxide::{Bot, types::ChatId};
 #[tokio::test]
 #[ignore]
 async fn test_send_notice() -> anyhow::Result<()> {
-    dotenv::dotenv().ok();
 
-    let config = Config::init();
+    let config = Config::load();
     let db = database::connect(&config.database_url).await?;
 
     let mut hasher = Sha256::new();
@@ -28,7 +27,7 @@ async fn test_send_notice() -> anyhow::Result<()> {
         Category::Training,
     );
 
-    let config = Config::init();
+    let config = Config::load();
     let _client = Arc::new(http_client());
     let bot = Bot::new(&config.teloxide_token);
     let chat_id = ChatId(config.chat_id);

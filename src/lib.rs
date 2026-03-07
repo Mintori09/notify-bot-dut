@@ -1,5 +1,5 @@
 pub mod bot;
-// pub mod cli;
+pub mod cli;
 pub mod controller;
 pub mod database;
 pub mod entity;

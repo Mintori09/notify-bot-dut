@@ -29,8 +29,6 @@ async fn test_analysis_notice() {
 #[tokio::test]
 #[ignore]
 async fn test_check_and_insert_sqlite() -> Result<()> {
-    dotenv::dotenv().ok();
-
     let pool = sqlx::SqlitePool::connect("sqlite::memory:").await?;
     notify_bot_dut::database::ensure_schema(&pool).await?;
 
@@ -45,7 +43,7 @@ async fn test_check_and_insert_sqlite() -> Result<()> {
         sent_ok: 0,
     };
 
-    let config = Config::init();
+    let config = Config::load();
     let first = check_and_insert(&pool, &notice, &config).await?;
     assert!(first, "First insert should return true");
 
